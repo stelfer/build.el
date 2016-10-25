@@ -3,13 +3,18 @@
 (require 'compile)
 
 (defvar build-target-use-current-buffer-as-hint nil)
+(defvar build-tool "make -w")
+(defvar build-tool-parallel-flag "-j")
+(defvar build-tool-root-flag "-C")
+(defvar build-tool-list-targets-flag "-np")
+(defvar build-tool-list-targets (concat build-tool " " build-tool-list-targets-flag))
 
 (defun build-project ()
   (interactive)
   (let* ((args (cond
-	       ((projectile-project-p) (concat "-C " (projectile-project-root)))
+	       ((projectile-project-p) (concat build-tool-root-flag " " (projectile-project-root)))
 	       (t "")))
-	 (command (concat "make " "-j " args)))
+	 (command (concat build-tool " " build-tool-parallel-flag args)))
     (compile command)))
 
 (defun build-target-from-current ()
@@ -20,9 +25,7 @@
     (setq build-target-use-current-buffer-as-hint hint)))
 
 (defun build-target-dir-args ()
-  (if (projectile-project-p)
-      (concat " -j" " -C " (projectile-project-root))
-    (error "Not a project")))
+  (concat build-tool-parallel-flag " " build-tool-root-flag " " (or build-root (projectile-project-root))))
 
 (defun build-get-target ()
   (let ((target-exclude-regexp "\\(^\\.\\)\\|[\\$\\%]")
@@ -31,7 +34,7 @@
     (save-window-excursion
       (with-output-to-temp-buffer "*build-targets*"
 	(let* ((build-dir-args (build-target-dir-args))
-	       (command (concat "make -np" build-dir-args)))
+	       (command (concat build-tool-list-targets build-dir-args)))
 	  (shell-command command "*build-targets*")
 	  (pop-to-buffer "*build-targets*")
 	  (goto-char (point-max))
@@ -49,7 +52,7 @@
   (interactive (list (build-get-target)))
   (save-window-excursion
     (message "%s" target)
-    (let ((command (concat "make" (build-target-dir-args) " " target)))
+    (let ((command (concat build-tool " " (build-target-dir-args) " " target)))
       (compile command))))
 
 (defun build ()
